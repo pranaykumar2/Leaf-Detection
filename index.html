@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leaf Disease Detection</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 50px;
+            background: url('https://png.pngtree.com/background/20210709/original/pngtree-painted-corner-tropical-leaves-background-material-picture-image_913437.jpg') no-repeat center center fixed;
+            background-size: cover;
+            color: white;
+        }
+	h1 { /* Style for the title */
+            color: black; /* Change the title color here */
+        }
+        button, input {
+            padding: 10px 20px;
+            font-size: 18px;
+            cursor: pointer;
+            margin: 10px;
+            border: none;
+            border-radius: 5px;
+        }
+        button {
+            background: green;
+            color: white;
+        }
+        input {
+            background: white;
+            color: black;
+        }
+        #imageContainer {
+            width: 300px;
+            margin: 20px auto;
+            display: none; /* Initially hide the container */
+        }
+        #capturedImage {
+            display: block;
+            width: 100%;
+            height: auto;
+            border: 3px solid white;
+        }
+        #predictContainer {
+            margin: 20px auto;
+            width: fit-content;
+            display: none; /* Initially hide the predict button */
+        }
+        #result {
+            font-size: 24px;
+            font-weight: bold;
+            margin-top: 20px;
+            padding: 10px;
+            display: none;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Leaf Disease Detection</h1>
+    <button id="captureButton">Capture from ESP32-CAM</button>
+    <input type="file" id="uploadInput" accept="image/*">
+    <br>
+    <div id="imageContainer">
+        <img id="capturedImage" src="" alt="Captured Image">
+    </div>
+    <div id="predictContainer">
+        <button id="predictButton">Predict</button>
+    </div>
+    <div id="result"></div>
+
+    <script>
+        let imgPath = "";
+
+        document.getElementById("captureButton").addEventListener("click", function() {
+            fetch("/capture")
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        imgPath = data.img_path;
+                        document.getElementById("capturedImage").src = imgPath;
+                        document.getElementById("imageContainer").style.display = "block";
+                        document.getElementById("predictContainer").style.display = "block";
+                    } else { alert("Capture failed: " + data.error); }
+                })
+                .catch(error => console.error("Error:", error));
+        });
+
+        document.getElementById("uploadInput").addEventListener("change", function(event) {
+            let file = event.target.files[0];
+            if (!file) return;
+            let formData = new FormData();
+            formData.append("file", file);
+            fetch("/upload", { method: "POST", body: formData })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        imgPath = data.img_path;
+                        document.getElementById("capturedImage").src = imgPath;
+                        document.getElementById("imageContainer").style.display = "block";
+                        document.getElementById("predictContainer").style.display = "block";
+                    } else { alert("Upload failed: " + data.error); }
+                })
+                .catch(error => console.error("Error:", error));
+        });
+
+        document.getElementById("predictButton").addEventListener("click", function() {
+            console.log("Predict button clicked. Image path:", imgPath);
+            if (!imgPath) {
+                alert("Please upload or capture an image first.");
+                return;
+            }
+
+            fetch("/predict", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ img_path: imgPath })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById("result").innerText = "Prediction: " + data.label;
+                        document.getElementById("result").style.display = "block";
+                    } else {
+                        alert("Prediction failed: " + data.error);
+                    }
+                })
+                .catch(error => console.error("Error:", error));
+        });
+        //Initial hide
+        document.getElementById("imageContainer").style.display = "none";
+        document.getElementById("predictContainer").style.display = "none";
+
+    </script>
+</body>
+</html>
